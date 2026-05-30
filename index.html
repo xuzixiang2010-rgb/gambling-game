@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>180秒 · 生命赌局</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 开场界面 -->
+  <section id="intro" class="screen active">
+    <div class="intro-box">
+      <h1 class="title">180<span class="unit">秒</span></h1>
+      <p class="subtitle">生命赌局</p>
+      <p class="intro-text">
+        你只剩 <b>180 秒</b> 生命。<br />
+        时间，就是你唯一的筹码。<br />
+        和庄家赌一把，<b>赢则双倍，输则永逝</b>。<br />
+        <span class="warn">倒计时永不停止——犹豫，也在流逝。</span>
+      </p>
+      <button id="startBtn" class="btn btn-gold">坐上赌桌</button>
+      <p class="tip">本游戏旨在警示：远离赌博。</p>
+    </div>
+  </section>
+
+  <!-- 主游戏界面 -->
+  <section id="game" class="screen">
+    <!-- 赌场场景：荷官 + 牌桌(背景图)，骰子/扑克在牌桌上演出 -->
+    <div class="scene" id="scene">
+      <!-- 顶部：生命条 + 局数(叠加层) -->
+      <header class="hud">
+        <div class="life-wrap">
+          <div class="life-label">
+            <span>生命</span>
+            <span id="lifeText">180.0s</span>
+          </div>
+          <div class="life-bar">
+            <div id="lifeFill" class="life-fill"></div>
+          </div>
+        </div>
+        <div class="hud-stats">
+          <div class="stat"><span class="stat-num" id="roundNum">0</span><span class="stat-lbl">局数</span></div>
+          <div class="stat"><span class="stat-num" id="oddsText">50/50</span><span class="stat-lbl">公平赔率</span></div>
+        </div>
+        <button id="muteBtn" class="mute-btn" title="静音/取消静音">🔊</button>
+      </header>
+
+      <!-- 荷官台词气泡(叠在荷官身上) -->
+      <div id="dealerSpeech" class="dealer-speech">坐吧，朋友。今晚你手气一定很好。</div>
+      <span id="dealerFace" class="dealer-face-hidden"></span>
+
+      <!-- 牌桌上的演出区：骰子/扑克在此呈现 -->
+      <div id="stage" class="stage"></div>
+    </div>
+
+    <!-- 控制面板(场景图下方) -->
+    <div class="panel">
+      <div class="game-picker">
+        <span class="picker-label">选择游戏：</span>
+        <div id="gameTabs" class="game-tabs"></div>
+      </div>
+
+      <div id="rules" class="rules-box"></div>
+
+      <footer class="controls">
+        <div class="bet-row">
+          <span class="bet-label">下注：</span>
+          <div id="betButtons" class="bet-buttons"></div>
+        </div>
+        <div class="action-row">
+          <button id="playBtn" class="btn btn-red">下注开赌</button>
+          <button id="leaveBtn" class="btn btn-ghost">离开</button>
+        </div>
+        <div id="sunkCost" class="sunk-cost"></div>
+      </footer>
+    </div>
+  </section>
+
+  <!-- 结局界面 -->
+  <section id="ending" class="screen">
+    <div id="endingBox" class="ending-box"></div>
+  </section>
+
+  <!-- 浮动提示（赢/输/差一点） -->
+  <div id="toast" class="toast"></div>
+
+  <script src="sound.js"></script>
+  <script src="games.js"></script>
+  <script src="engine.js"></script>
+</body>
+</html>
