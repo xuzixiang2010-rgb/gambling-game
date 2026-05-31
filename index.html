@@ -23,6 +23,27 @@
     </div>
   </section>
 
+  <!-- 游戏大厅：选择今晚的赌局 -->
+  <section id="lobby" class="screen">
+    <div class="lobby-inner">
+      <header class="lobby-head">
+        <div class="lobby-life">
+          <div class="life-label">
+            <span>剩余生命</span>
+            <span id="lobbyLifeText">180.0s</span>
+          </div>
+          <div class="life-bar"><div id="lobbyLifeFill" class="life-fill"></div></div>
+        </div>
+        <h2 class="lobby-title">选择今晚的赌局</h2>
+        <p class="lobby-sub">越往后解锁的赌局越刺激，也越凶险。<span class="warn">挑选时，生命仍在流逝。</span></p>
+      </header>
+      <div id="lobbyGrid" class="lobby-grid"></div>
+      <footer class="lobby-foot">
+        <button id="lobbyLeaveBtn" class="btn btn-ghost">带着生命离开（这才是赢）</button>
+      </footer>
+    </div>
+  </section>
+
   <!-- 主游戏界面 -->
   <section id="game" class="screen">
     <!-- 赌场场景：荷官 + 牌桌(背景图)，骰子/扑克在牌桌上演出 -->
@@ -56,8 +77,8 @@
     <!-- 控制面板(场景图下方) -->
     <div class="panel">
       <div class="game-picker">
-        <span class="picker-label">选择游戏：</span>
-        <div id="gameTabs" class="game-tabs"></div>
+        <button id="lobbyBtn" class="btn btn-ghost lobby-btn">🏛 返回大厅 · 换游戏</button>
+        <span id="currentGameName" class="current-game"></span>
       </div>
 
       <div id="rules" class="rules-box"></div>
@@ -83,6 +104,9 @@
 
   <!-- 浮动提示（赢/输/差一点） -->
   <div id="toast" class="toast"></div>
+
+  <!-- GM 模式：一键解锁全部游戏 + 无限生命 -->
+  <button id="gmBtn" class="gm-fab" title="GM 模式：解锁全部游戏 + 无限生命">GM</button>
 
   <script src="sound.js"></script>
   <script src="games.js"></script>

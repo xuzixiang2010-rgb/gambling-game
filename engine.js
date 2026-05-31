@@ -19,7 +19,9 @@ const State = {
   lossStreak: 0, rescued: false,
   startWall: 0,         // 真实开始时间戳
   forcedWinsLeft: 2,    // 诱饵：开局强制赢2把
+  godMode: false,       // GM 模式：解锁全部 + 无限生命
 };
+const GOD_LIFE = 99999; // GM 模式下的"无限"生命值
 
 /* ---------- DOM ---------- */
 const $ = (id) => document.getElementById(id);
@@ -92,12 +94,20 @@ function dealerIdle() { dealerSay(pick(DEALER[dealerPhase()].idle)); }
 function fmt(s) { return (Math.max(0, s)).toFixed(1) + "s"; }
 
 function renderLife() {
+  if (State.godMode) State.life = GOD_LIFE; // 无限生命：每次刷新都钉死
   const over = State.life > 180;
-  els.lifeText.textContent = fmt(State.life) + (over ? "  ▲ 突破上限!" : "");
+  const txt = State.godMode ? "∞  (GM 无限)" : fmt(State.life) + (over ? "  ▲ 突破上限!" : "");
+  els.lifeText.textContent = txt;
   const pct = Math.max(0, Math.min(100, (State.life / 180) * 100));
   els.lifeFill.style.width = pct + "%";
   els.lifeFill.classList.toggle("overflow", over);
-  document.body.classList.toggle("dying", State.life < 30 && State.life > 0);
+  // 大厅里的生命条同步刷新(挑选时也在流逝)
+  if (els.lobbyLifeText) {
+    els.lobbyLifeText.textContent = State.godMode ? "∞ GM" : fmt(State.life) + (over ? "  ▲" : "");
+    els.lobbyLifeFill.style.width = pct + "%";
+    els.lobbyLifeFill.classList.toggle("overflow", over);
+  }
+  document.body.classList.toggle("dying", !State.godMode && State.life < 30 && State.life > 0);
   updateBetDisplay(); // 全押额度/开赌按钮随生命实时刷新
 }
 
@@ -126,18 +136,53 @@ function renderSunkCost() {
   }
 }
 
-function renderGameTabs() {
-  els.gameTabs.innerHTML = "";
+/* ---------- 大厅：游戏卡片选择 ---------- */
+function renderLobby() {
+  if (!els.lobbyGrid) return;
+  els.lobbyGrid.innerHTML = "";
   GAMES.forEach((g) => {
-    const t = document.createElement("button");
-    const unlocked = State.round >= g.unlockAtRound;
-    t.className = "game-tab" + (unlocked ? "" : " locked") + (State.currentGame === g ? " active" : "");
-    t.innerHTML = unlocked
-      ? `${g.name}${g.risk ? '<span class="risk">⚠</span>' : ""}`
-      : `🔒 ${g.name}<span class="risk"> ${g.unlockAtRound}局</span>`;
-    if (unlocked) t.onclick = () => selectGame(g);
-    els.gameTabs.appendChild(t);
+    const unlocked = State.godMode || State.round >= g.unlockAtRound;
+    const card = document.createElement(unlocked ? "button" : "div");
+    card.className = "lobby-card" + (unlocked ? "" : " locked");
+    card.innerHTML = `
+      <img class="thumb" src="${g.img}" alt="${g.name}" />
+      ${g.risk ? '<span class="risk-badge">⚠ 高风险</span>' : ""}
+      <div class="card-body">
+        <div class="gname">${g.name}</div>
+        <div class="gshort">${g.short}</div>
+        <div class="gunlock">${unlocked ? "▶ 点击进入" : "第 " + g.unlockAtRound + " 局解锁"}</div>
+      </div>
+      ${unlocked ? "" : `<div class="lock-overlay"><span class="lock-ico">🔒</span><span>第 ${g.unlockAtRound} 局解锁</span></div>`}`;
+    if (unlocked) card.onclick = () => enterGame(g);
+    els.lobbyGrid.appendChild(card);
   });
+}
+
+/* 游戏内显示当前在玩的游戏名 */
+function renderCurrentGame() {
+  if (els.currentGameName && State.currentGame) {
+    els.currentGameName.textContent =
+      "正在玩：" + State.currentGame.name + (State.currentGame.risk ? " ⚠" : "");
+  }
+}
+
+/* 进入大厅(挑选赌局)；倒计时继续流逝 */
+function enterLobby() {
+  if (State.resolving) { dealerSay("这把还没开完，别急着换桌！"); return; }
+  if ($("ending").classList.contains("active")) return;
+  switchScreen("lobby");
+  State.paused = false;
+  renderLife();
+  renderLobby();
+}
+
+/* 从大厅进入某个赌局 */
+function enterGame(g) {
+  switchScreen("game");
+  State.paused = false;
+  selectGame(g);
+  renderLife(); renderHud(); renderBets(); renderSunkCost();
+  dealerIdle();
 }
 
 // 本局实际下注额：全押模式下动态等于当前生命(向下取整)
@@ -217,7 +262,7 @@ function selectGame(g) {
       ? `📖 <b>${g.name} · 玩法规则</b><br/>${g.rules}`
       : "";
   }
-  renderGameTabs();
+  renderCurrentGame();
   updatePlayBtn();
 }
 
@@ -247,7 +292,7 @@ async function play() {
   State.gamesPlayed++;
   State.round++;
 
-  if (ret.deadly) {            // 俄罗斯轮盘中弹
+  if (ret.deadly && !State.godMode) {            // 俄罗斯轮盘中弹
     State.life = 0;
     renderLife();
     return death("你赌上了性命，子弹没有怜悯。");
@@ -282,7 +327,7 @@ async function play() {
 
   State.resolving = false;
   els.leaveBtn.disabled = false;
-  renderBets(); renderGameTabs();
+  renderBets(); renderCurrentGame();
 
   if (State.life <= 0.05) return death("时间，是你输不起的赌注。");
 
@@ -319,6 +364,7 @@ function tick() {
 
 /* ---------- 结局：死亡揭示 ---------- */
 function death(reason) {
+  if (State.godMode) { State.life = GOD_LIFE; renderLife(); State.paused = false; return; }
   if ($("ending").classList.contains("active")) return;
   State.paused = true;
   document.body.classList.remove("dying");
@@ -384,38 +430,56 @@ function switchScreen(id) {
   $(id).classList.add("active");
 }
 
-/* ---------- 开始游戏 ---------- */
+/* ---------- 开始游戏：先进大厅选赌局 ---------- */
 function startGame() {
-  switchScreen("game");
   State.startWall = Date.now();
-  State.paused = false;
+  State.currentGame = GAMES[0];
   // 音频必须在用户手势后启动
   SoundFX.init(); SoundFX.resume(); SoundFX.startBGM();
-  selectGame(GAMES[0]);
-  renderLife(); renderHud(); renderBets(); renderSunkCost(); renderGameTabs();
-  dealerIdle();
+  renderHud(); renderBets(); renderSunkCost();
+  enterLobby();
 }
 
 /* ---------- 初始化 ---------- */
 window.addEventListener("DOMContentLoaded", () => {
   ["lifeText", "lifeFill", "roundNum", "oddsText", "dealerFace", "dealerSpeech",
-   "gameTabs", "stage", "betButtons", "playBtn", "leaveBtn", "sunkCost", "toast",
-   "endingBox", "rules", "muteBtn"].forEach((id) => (els[id] = $(id)));
+   "stage", "betButtons", "playBtn", "leaveBtn", "sunkCost", "toast",
+   "endingBox", "rules", "muteBtn", "gmBtn",
+   "lobbyLifeText", "lobbyLifeFill", "lobbyGrid", "lobbyBtn", "lobbyLeaveBtn",
+   "currentGameName"].forEach((id) => (els[id] = $(id)));
 
   $("startBtn").onclick = startGame;
   els.playBtn.onclick = play;
   els.leaveBtn.onclick = leave;
+  els.lobbyBtn.onclick = enterLobby;
+  els.lobbyLeaveBtn.onclick = leave;
   els.muteBtn.onclick = () => {
     const m = !SoundFX.isMuted();
     SoundFX.setMuted(m);
     els.muteBtn.textContent = m ? "🔇" : "🔊";
   };
+  els.gmBtn.onclick = () => {
+    State.godMode = !State.godMode;
+    els.gmBtn.classList.toggle("active", State.godMode);
+    els.gmBtn.textContent = State.godMode ? "GM ✓" : "GM";
+    if (State.godMode) {
+      State._preGodLife = State.life;
+      State.life = GOD_LIFE;
+    } else {
+      State.life = Math.min(State._preGodLife || 180, 180);
+    }
+    document.body.classList.remove("dying");
+    renderLife();
+    if ($("lobby").classList.contains("active")) renderLobby();
+    if ($("game").classList.contains("active")) { renderBets(); updatePlayBtn(); }
+    dealerSay(State.godMode ? "GM 模式：全部解锁，生命无限。随便玩。" : "GM 模式已关闭，回到凡人规则。");
+  };
 
   setInterval(tick, 100);
 
-  // 庄家定时碎碎念，制造存在感(idle时)
+  // 庄家定时碎碎念，制造存在感(仅在牌桌上)
   setInterval(() => {
-    if (!State.paused && !State.resolving && !$("ending").classList.contains("active")) {
+    if ($("game").classList.contains("active") && !State.paused && !State.resolving) {
       if (Math.random() < 0.25) dealerIdle();
     }
   }, 6000);

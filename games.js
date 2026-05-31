@@ -21,11 +21,40 @@ const SUITS = [
 ];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
+// 各数字牌的传统点数排列(百分比坐标，参照真实扑克)
+const PIP_LAYOUT = {
+  "2": [[50, 16], [50, 84]],
+  "3": [[50, 16], [50, 50], [50, 84]],
+  "4": [[30, 16], [70, 16], [30, 84], [70, 84]],
+  "5": [[30, 16], [70, 16], [50, 50], [30, 84], [70, 84]],
+  "6": [[30, 16], [70, 16], [30, 50], [70, 50], [30, 84], [70, 84]],
+  "7": [[30, 16], [70, 16], [50, 33], [30, 50], [70, 50], [30, 84], [70, 84]],
+  "8": [[30, 16], [70, 16], [50, 33], [30, 50], [70, 50], [50, 67], [30, 84], [70, 84]],
+  "9": [[30, 14], [70, 14], [30, 38], [70, 38], [50, 50], [30, 62], [70, 62], [30, 86], [70, 86]],
+  "10": [[30, 14], [70, 14], [50, 26], [30, 38], [70, 38], [30, 62], [70, 62], [50, 74], [30, 86], [70, 86]],
+};
+const COURT = { J: "🤵", Q: "👸", K: "🤴" };
+
+// 渲染一张“真实牌面”：双角标 + 中央点数/人物/A大花色
 function cardEl(rank, suitObj, faceDown = false) {
   const d = document.createElement("div");
   d.className = "card" + (suitObj && suitObj.red ? " red" : "") + (faceDown ? " back" : "");
   if (faceDown) { d.textContent = "?"; return d; }
-  d.innerHTML = `<span class="rank">${rank}</span><span class="suit">${suitObj.s}</span>`;
+  const s = suitObj.s;
+  let center;
+  if (PIP_LAYOUT[rank]) {
+    center = '<div class="pips">' + PIP_LAYOUT[rank]
+      .map(([x, y]) => `<span class="pip-s${y > 50 ? " flip" : ""}" style="left:${x}%;top:${y}%">${s}</span>`)
+      .join("") + "</div>";
+  } else if (rank === "A") {
+    center = `<div class="ace">${s}</div>`;
+  } else {
+    center = `<div class="court"><span class="court-fig">${COURT[rank] || "♛"}</span><span class="court-suit">${s}</span></div>`;
+  }
+  d.innerHTML =
+    `<span class="corner tl"><b>${rank}</b><i>${s}</i></span>` +
+    center +
+    `<span class="corner br"><b>${rank}</b><i>${s}</i></span>`;
   return d;
 }
 function randomCard() { return { rank: pick(RANKS), suit: pick(SUITS) }; }
@@ -71,21 +100,77 @@ function choiceGroup(options, ctx) {
   return { wrap, get: () => selected };
 }
 
+/* ---------- 3D 骰子工具 ---------- */
+// 各点数对应的点位(百分比坐标，3x3 布局)
+const PIP_MAP = {
+  1: [[50, 50]],
+  2: [[30, 30], [70, 70]],
+  3: [[30, 30], [50, 50], [70, 70]],
+  4: [[30, 30], [70, 30], [30, 70], [70, 70]],
+  5: [[30, 30], [70, 30], [50, 50], [30, 70], [70, 70]],
+  6: [[30, 30], [70, 30], [30, 50], [70, 50], [30, 70], [70, 70]],
+};
+// 把一颗骰子渲染成对应点数的真实点子(非数字)
+function renderDie(el, value) {
+  el.innerHTML = "";
+  el.dataset.val = value;
+  (PIP_MAP[value] || []).forEach(([x, y]) => {
+    const p = document.createElement("span");
+    p.className = "pip" + (value === 1 ? " one" : "");
+    p.style.left = x + "%"; p.style.top = y + "%";
+    el.appendChild(p);
+  });
+}
+// 初始：三颗骰子在场地里排成一排(轻微错落)，随机面朝上
+function layoutDiceRow(arena) {
+  const dice = [...arena.querySelectorAll(".die")];
+  const W = arena.clientWidth || 300, H = arena.clientHeight || 175;
+  const D = 58, gap = 16;
+  const total = D * 3 + gap * 2;
+  const startX = Math.max(4, (W - total) / 2);
+  dice.forEach((d, i) => {
+    d.style.left = (startX + i * (D + gap)) + "px";
+    d.style.top = ((H - D) / 2) + "px";
+    d.style.rotate = randInt(-8, 8) + "deg";
+    renderDie(d, randInt(1, 6));
+  });
+}
+// 掀盅后：三颗骰子随机散落，互不并列、互不重叠
+function scatterDice(dice, W, H) {
+  const D = dice[0].offsetWidth || 58;
+  const m = 6;
+  const centers = [];
+  dice.forEach(() => {
+    let x, y, tries = 0;
+    do {
+      x = randInt(m, Math.max(m, W - D - m));
+      y = randInt(m, Math.max(m, H - D - m));
+      tries++;
+    } while (tries < 60 && centers.some((c) => Math.hypot(c.x - x, c.y - y) < D * 0.95));
+    centers.push({ x, y });
+  });
+  return centers.map((c) => ({ x: c.x, y: c.y, rot: randInt(-45, 45) }));
+}
+
 /* ============================================================
  * 1. 摇骰子 · 猜大小   (第0局解锁，最简单)
  * ============================================================ */
 const DiceGame = {
   id: "dice", name: "摇骰子", short: "猜大小", unlockAtRound: 0, risk: false,
+  img: "assets/game_dice.png",
   rules: "三颗骰子摇出总和：4~10 为「小」，11~17 为「大」。先押一边再开摇。猜中赢双倍时间，猜错损失全部赌注，豹子(三颗相同)算平局退还。",
   _choice: null,
   setup(stage, ctx) {
     this._choice = null;
     stage.innerHTML = `<div class="stage-title">🎲 摇骰子 · 猜大小</div>`;
-    const diceRow = document.createElement("div");
-    diceRow.className = "dice-row";
-    diceRow.id = "diceRow";
-    diceRow.innerHTML = `<div class="die">?</div><div class="die">?</div><div class="die">?</div>`;
-    stage.appendChild(diceRow);
+    const arena = document.createElement("div");
+    arena.className = "dice-arena";
+    arena.innerHTML = `<div class="dice-shaker">
+        <div class="die"></div><div class="die"></div><div class="die"></div>
+        <div class="dice-cup"></div>
+      </div>`;
+    stage.appendChild(arena);
+    layoutDiceRow(arena); // 初始三颗骰子(随机面)
     const info = document.createElement("div");
     info.className = "stage-info";
     info.textContent = "三颗骰子总和：4~10 为「小」，11~17 为「大」，豹子(三同)算平局退还。";
@@ -99,11 +184,12 @@ const DiceGame = {
   ready() { return this._cg && this._cg.get() !== null; },
   async resolve(stage, { outcome, nearMiss }) {
     const choice = this._cg.get();
-    const dice = stage.querySelectorAll(".die");
-    dice.forEach((d) => d.classList.add("rolling"));
-    SoundFX.dice();
-    await wait(900);
+    const arena = stage.querySelector(".dice-arena");
+    const shaker = arena.querySelector(".dice-shaker");
+    const cup = arena.querySelector(".dice-cup");
+    const dice = [...arena.querySelectorAll(".die")];
 
+    // 计算最终点数(逻辑不变)
     let vals;
     if (outcome === "draw") {
       const v = randInt(1, 6); vals = [v, v, v]; // 豹子
@@ -114,12 +200,47 @@ const DiceGame = {
       else targetSum = wantBig ? randInt(12, 16) : randInt(5, 9);
       vals = sumToDice(targetSum);
     }
+
+    // 1) 三颗骰子聚到中央，骰盅扣下盖住
+    const W = arena.clientWidth, H = arena.clientHeight, D = dice[0].offsetWidth || 58;
+    dice.forEach((d) => {
+      d.style.left = ((W - D) / 2 + randInt(-10, 10)) + "px";
+      d.style.top = ((H - D) / 2 + randInt(-8, 8)) + "px";
+      d.style.rotate = randInt(-20, 20) + "deg";
+    });
+    cup.classList.add("show", "dropping");
+    await wait(300);
+    SoundFX.diceLand(); // 扣下的闷响
+    await wait(180);
+
+    // 2) 摇盅：骰盅连骰子一起剧烈摇晃
+    shaker.classList.add("shaking");
+    SoundFX.dice();
+    await wait(420); SoundFX.dice();
+    await wait(420); SoundFX.dice();
+    await wait(360);
+    shaker.classList.remove("shaking");
+    cup.classList.remove("dropping");
+
+    // 3) 盅内定型 + 随机散开(此刻仍被盅盖住，掀开即见结果)
+    const pos = scatterDice(dice, W, H);
+    dice.forEach((d, i) => {
+      renderDie(d, vals[i]);
+      d.style.left = pos[i].x + "px";
+      d.style.top = pos[i].y + "px";
+      d.style.rotate = pos[i].rot + "deg";
+    });
+    await wait(140);
+
+    // 4) 掀盅，逐颗弹跳亮点
+    cup.classList.add("lifting");
+    SoundFX.diceLand();
+    await wait(420);
+    cup.classList.remove("show", "lifting");
     for (let i = 0; i < dice.length; i++) {
-      dice[i].classList.remove("rolling");
-      dice[i].textContent = vals[i];
       dice[i].classList.remove("pop"); void dice[i].offsetWidth; dice[i].classList.add("pop");
       SoundFX.diceLand();
-      await wait(180); // 逐颗落定，更有摇骰子的节奏感
+      await wait(150);
     }
     return { displaySum: vals.reduce((a, b) => a + b, 0) };
   },
@@ -136,6 +257,7 @@ function sumToDice(sum) {
  * ============================================================ */
 const HighCardGame = {
   id: "highcard", name: "扑克比大小", short: "比点数", unlockAtRound: 4, risk: false,
+  img: "assets/game_highcard.png",
   rules: "你和庄家各翻一张牌，点数大的一方获胜（A 最大，2 最小）。你赢则得双倍时间，输则损失赌注，点数相同为平局退还。",
   setup(stage, ctx) {
     stage.innerHTML = `<div class="stage-title">🂡 翻牌比大小</div>`;
@@ -175,12 +297,33 @@ const HighCardGame = {
 /* ============================================================
  * 3. 百家乐   (第8局)
  * ============================================================ */
+/* 百家乐：把目标点数(个位)拆成两张真实扑克牌
+ * 牌面点数：A=1，2~9=面值，10/J/Q/K=0；两张相加取个位 */
+function bacValueToCard(v) {
+  let rank;
+  if (v === 1) rank = "A";
+  else if (v === 0) rank = pick(["10", "J", "Q", "K"]);
+  else rank = String(v);
+  return { rank, suit: pick(SUITS) };
+}
+function baccaratCards(point) {
+  const v1 = randInt(0, 9);
+  const v2 = ((point - v1) % 10 + 10) % 10;
+  return [bacValueToCard(v1), bacValueToCard(v2)];
+}
 const BaccaratGame = {
   id: "baccarat", name: "百家乐", short: "押庄/闲/和", unlockAtRound: 8, risk: false,
-  rules: "押注「闲」「庄」或「和」三选一。双方各发牌，比谁的点数更接近 9（点数只取个位）。押中你选的一方即赢，押「和」赔率最高但极难命中。",
+  img: "assets/game_baccarat.png",
+  rules: "押注「闲」「庄」或「和」三选一。双方各发两张真实扑克牌，按牌面计点（A=1，2~9为面值，10/J/Q/K=0，相加取个位），比谁更接近 9。押中你选的一方即赢，押「和」赔率最高但极难命中。",
   setup(stage, ctx) {
     stage.innerHTML = `<div class="stage-title">🎴 百家乐</div>
-      <div class="stage-info">押中一方点数更大者胜（点数取个位）。押「和」赔率高但极难中。庄家会抽水。</div>`;
+      <div class="stage-info">双方各发两张牌，按牌面取点（取个位），点数大者胜。押「和」赔率高但极难中。</div>`;
+    const table = document.createElement("div");
+    table.className = "bac-table";
+    table.innerHTML = `
+      <div class="bac-side"><div class="stage-info">闲 PLAYER</div><div class="card-row" id="bacP"></div></div>
+      <div class="bac-side"><div class="stage-info">庄 BANKER</div><div class="card-row" id="bacB"></div></div>`;
+    stage.appendChild(table);
     const cg = choiceGroup([
       { label: "押 闲", value: "player" }, { label: "押 庄", value: "banker" }, { label: "押 和", value: "tie" },
     ], ctx);
@@ -193,10 +336,9 @@ const BaccaratGame = {
   async resolve(stage, { outcome, nearMiss }) {
     const choice = this._cg.get();
     const res = stage.querySelector("#bacRes");
+    const pRow = stage.querySelector("#bacP"), bRow = stage.querySelector("#bacB");
+    pRow.innerHTML = ""; bRow.innerHTML = "";
     res.textContent = "发牌中…";
-    SoundFX.card(); await wait(220);
-    SoundFX.card(); await wait(220);
-    SoundFX.card(); await wait(260);
     let p, b;
     const tieBet = choice === "tie";
     if (outcome === "draw" || (tieBet && outcome === "win")) { p = randInt(0, 9); b = p; }
@@ -211,6 +353,10 @@ const BaccaratGame = {
         p = randInt(0, 8); b = nearMiss ? Math.min(9, p + 1) : randInt(p + 1, 9);
       }
     }
+    const pc = baccaratCards(p), bc = baccaratCards(b);
+    const seq = [[pRow, pc[0]], [bRow, bc[0]], [pRow, pc[1]], [bRow, bc[1]]];
+    for (const [row, c] of seq) { SoundFX.card(); row.appendChild(cardEl(c.rank, c.suit)); await wait(300); }
+    await wait(200);
     res.innerHTML = `闲 <b style="color:#6fa8dc">${p}</b> 点 ｜ 庄 <b style="color:#e74c3c">${b}</b> 点`;
     return {};
   },
@@ -221,6 +367,7 @@ const BaccaratGame = {
  * ============================================================ */
 const BlackjackGame = {
   id: "blackjack", name: "21点", short: "要牌/停牌", unlockAtRound: 12, risk: false,
+  img: "assets/game_blackjack.png",
   rules: "目标是让手牌点数尽量接近 21 且不超过。J/Q/K 算 10，A 算 11 或 1。点数偏小可「要牌」继续抓，满意则「停牌」与庄家比大小；一旦超过 21 立即爆牌输掉。",
   setup(stage, ctx) {
     this._ctx = ctx; this._done = false;
@@ -310,6 +457,7 @@ const HANDS_3 = [
 ];
 const GoldenFlowerGame = makeCompareGame({
   id: "goldenflower", name: "炸金花", short: "比牌型", unlockAtRound: 18, risk: false,
+  img: "assets/game_goldenflower.png",
   title: "🔥 炸金花 · 比牌型", count: 3, hands: HANDS_3,
   info: "三张牌比牌型：豹子>顺金>金花>顺子>对子>高牌。需要点脑子。",
   rules: "你和庄家各发 3 张牌，比牌型大小。牌型从大到小：豹子(三同)>顺金(同花顺子)>金花(同花)>顺子>对子>高牌。牌型大者赢得双倍时间。",
@@ -331,6 +479,7 @@ const HANDS_5 = [
 ];
 const StudGame = makeCompareGame({
   id: "stud", name: "梭哈", short: "五张比牌", unlockAtRound: 25, risk: false,
+  img: "assets/game_stud.png",
   title: "💵 梭哈 · 五张比牌型", count: 5, hands: HANDS_5,
   info: "经典五张：同花顺>四条>葫芦>同花>顺子>三条>两对>一对>高牌。",
   rules: "你和庄家各发 5 张牌，比牌型大小。牌型从大到小：同花顺>四条>葫芦>同花>顺子>三条>两对>一对>高牌。牌型大者赢得双倍时间。",
@@ -340,36 +489,44 @@ const StudGame = makeCompareGame({
 function makeCompareGame(cfg) {
   return {
     id: cfg.id, name: cfg.name, short: cfg.short, unlockAtRound: cfg.unlockAtRound, risk: !!cfg.risk,
+    img: cfg.img,
     rules: cfg.rules,
     setup(stage, ctx) {
       stage.innerHTML = `<div class="stage-title">${cfg.title}</div>
         <div class="stage-info">${cfg.info}</div>`;
       this._area = document.createElement("div");
       stage.appendChild(this._area);
+      // 先发玩家自己的牌（看牌），玩家看清牌型后再决定下注多少
+      const hands = cfg.hands;
+      const max = hands.length - 1;
+      const mid = Math.floor(max / 2);
+      this._pLvl = randInt(Math.max(0, mid - 1), Math.min(max, mid + 1));
+      this._pHand = hands[this._pLvl];
+      this._area.innerHTML = `
+        <div class="stage-info">你的牌（先看牌，再下注）</div><div class="card-row" id="cgP"></div>
+        <div class="stage-info" id="cgPn">？</div>
+        <div class="stage-info" style="margin-top:14px">庄家</div>
+        <div class="card-row" id="cgD">${'<div class="card back">?</div>'.repeat(cfg.count)}</div>
+        <div class="stage-info" id="cgDn">下注后揭晓庄家牌</div>`;
+      const pr = this._area.querySelector("#cgP");
+      for (const [rank, si] of this._pHand.cards) { SoundFX.card(); pr.appendChild(cardEl(rank, SUITS[si])); }
+      this._area.querySelector("#cgPn").innerHTML = `你的牌型：<b style="color:#e8c14a">${this._pHand.name}</b>`;
       ctx.setReady(true);
     },
     ready() { return true; },
     async resolve(stage, { outcome, nearMiss }) {
       const hands = cfg.hands;
       const max = hands.length - 1;
-      let pLvl, dLvl;
-      const mid = Math.floor(max / 2);
-      pLvl = randInt(Math.max(0, mid - 1), Math.min(max, mid + 1));
+      const pLvl = this._pLvl;
+      let dLvl;
       if (outcome === "draw") dLvl = pLvl;
       else if (outcome === "win") dLvl = nearMiss ? Math.max(0, pLvl - 1) : randInt(0, Math.max(0, pLvl - 1));
       else dLvl = nearMiss ? Math.min(max, pLvl + 1) : randInt(Math.min(max, pLvl + 1), max);
-      const pHand = hands[pLvl], dHand = hands[dLvl];
-      this._area.innerHTML = `
-        <div class="stage-info">你的牌</div><div class="card-row" id="cgP"></div>
-        <div class="stage-info" id="cgPn">？</div>
-        <div class="stage-info" style="margin-top:14px">庄家</div><div class="card-row" id="cgD"></div>
-        <div class="stage-info" id="cgDn">？</div>`;
-      const pr = this._area.querySelector("#cgP"), dr = this._area.querySelector("#cgD");
-      for (const [rank, si] of pHand.cards) { SoundFX.card(); pr.appendChild(cardEl(rank, SUITS[si])); await wait(180); }
-      this._area.querySelector("#cgPn").innerHTML = `牌型：<b style="color:#e8c14a">${pHand.name}</b>`;
-      await wait(400);
-      for (const [rank, si] of dHand.cards) { SoundFX.card(); dr.appendChild(cardEl(rank, SUITS[si])); await wait(180); }
-      this._area.querySelector("#cgDn").innerHTML = `牌型：<b style="color:#e74c3c">${dHand.name}</b>`;
+      const dHand = hands[dLvl];
+      const dr = this._area.querySelector("#cgD");
+      dr.innerHTML = "";
+      for (const [rank, si] of dHand.cards) { SoundFX.card(); dr.appendChild(cardEl(rank, SUITS[si])); await wait(220); }
+      this._area.querySelector("#cgDn").innerHTML = `庄家牌型：<b style="color:#e74c3c">${dHand.name}</b>`;
       await wait(300);
       return {};
     },
@@ -382,6 +539,7 @@ function makeCompareGame(cfg) {
 const SYMBOLS = ["🍒", "🍋", "🔔", "💎", "7️⃣"];
 const SlotGame = {
   id: "slot", name: "老虎机", short: "拉一把", unlockAtRound: 32, risk: true,
+  img: "assets/game_slot.png",
   rules: "拉动三个转轮，停下后三个图案完全相同即中奖，7️⃣7️⃣7️⃣ 为头奖。高赔率高刺激，但中奖远比看上去难——你常常会「只差一个」。",
   setup(stage, ctx) {
     stage.innerHTML = `<div class="stage-title">🎰 老虎机 · 高风险高回报</div>`;
@@ -420,6 +578,7 @@ const SlotGame = {
  * ============================================================ */
 const RevolverGame = {
   id: "revolver", name: "俄罗斯轮盘", short: "赌命", unlockAtRound: 40, risk: true, deadly: true,
+  img: "assets/game_revolver.png",
   rules: "六个弹膛，只装一颗子弹。扣下扳机：中弹则生命瞬间归零(直接死亡)，幸存则赌注 ×4 巨额回血。这是庄家给绝望者的「恩赐」——但子弹从不讲情面。",
   setup(stage, ctx) {
     stage.innerHTML = `<div class="stage-title">💀 俄罗斯轮盘 · 赌上性命</div>
@@ -454,8 +613,80 @@ const RevolverGame = {
   },
 };
 
+/* ============================================================
+ * 9. 麻将 · 听牌摸将   (第22局) —— 自摸胡牌
+ * ============================================================ */
+/* 渲染一张麻将牌：kind 决定花色配色 */
+function mjTileEl(label, kind) {
+  const t = document.createElement("div");
+  t.className = "mj-tile mj-" + (kind || "wan");
+  t.innerHTML = `<span class="mj-face">${label}</span>`;
+  return t;
+}
+function mjBackEl() {
+  const t = document.createElement("div");
+  t.className = "mj-tile mj-back";
+  t.innerHTML = `<span class="mj-face">?</span>`;
+  return t;
+}
+const MahjongGame = {
+  id: "mahjong", name: "麻将", short: "听牌摸将", unlockAtRound: 22, risk: false,
+  img: "assets/game_mahjong.png",
+  rules: "你已「听牌」，只差最后一张。摸到所听的牌即「自摸·胡了」，赢得双倍时间；摸错（诈胡）则输掉赌注；摸到花牌为流局，退还赌注。",
+  setup(stage, ctx) {
+    stage.innerHTML = `<div class="stage-title">🀄 麻将 · 听牌摸将</div>
+      <div class="stage-info">你已听牌，只差最后一张。摸到所听之牌即自摸胡牌！</div>`;
+    // 一手听牌（仅作展示）：234万 567筒 88条 + 听 6条/9条
+    this._listen = [["6", "tiao"], ["9", "tiao"]];
+    const hand = [
+      ["二", "wan"], ["三", "wan"], ["四", "wan"],
+      ["五", "tong"], ["六", "tong"], ["七", "tong"],
+      ["八", "tiao"], ["八", "tiao"],
+    ];
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div class="mj-hand" id="mjHand"></div>
+      <div class="mj-draw-wrap"><div class="stage-info">摸牌</div><div class="mj-draw" id="mjDraw"></div></div>
+      <div class="stage-info" id="mjRes">听：<b style="color:#e8c14a">六条 / 九条</b>　摸到即胡！</div>`;
+    stage.appendChild(wrap);
+    const h = wrap.querySelector("#mjHand");
+    for (const [lab, kind] of hand) h.appendChild(mjTileEl(lab, kind));
+    wrap.querySelector("#mjDraw").appendChild(mjBackEl());
+    ctx.setReady(true);
+  },
+  ready() { return true; },
+  async resolve(stage, { outcome, nearMiss }) {
+    const draw = stage.querySelector("#mjDraw");
+    const res = stage.querySelector("#mjRes");
+    res.textContent = "摸牌中…";
+    // 摸牌摇摆动画
+    const back = draw.querySelector(".mj-tile");
+    back.classList.add("mj-shake");
+    SoundFX.diceLand(); await wait(260);
+    SoundFX.diceLand(); await wait(260);
+    let label, kind, msg;
+    if (outcome === "win") {
+      const t = pick(this._listen); label = t[0] === "6" ? "六" : "九"; kind = "tiao";
+      msg = `自摸 <b style="color:#e8c14a">${label}条</b> —— 🀄 胡了！`;
+    } else if (outcome === "draw") {
+      label = "花"; kind = "flower"; msg = `摸到 <b style="color:#7bc47f">花牌</b> —— 流局，退还赌注`;
+    } else {
+      // 诈胡：摸一张非所听之牌
+      const wrong = pick([["一", "wan"], ["九", "wan"], ["东", "honor"], ["北", "honor"], ["三", "tong"]]);
+      label = wrong[0]; kind = wrong[1]; msg = `摸到 <b style="color:#e74c3c">${label}</b> —— 没胡，黄了…`;
+    }
+    draw.innerHTML = "";
+    const tile = mjTileEl(label, kind);
+    tile.classList.add("mj-pop");
+    draw.appendChild(tile);
+    SoundFX.diceLand();
+    await wait(450);
+    res.innerHTML = msg;
+    return {};
+  },
+};
+
 /* ---------- 导出所有游戏 ---------- */
 window.GAMES = [
   DiceGame, HighCardGame, BaccaratGame, BlackjackGame,
-  GoldenFlowerGame, StudGame, SlotGame, RevolverGame,
+  GoldenFlowerGame, StudGame, MahjongGame, SlotGame, RevolverGame,
 ];
