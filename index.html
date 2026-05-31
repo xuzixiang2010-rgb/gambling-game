@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>180秒 · 生命赌局</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="mahjong.css" />
 </head>
 <body>
   <!-- 开场界面 -->
@@ -19,7 +20,8 @@
         <span class="warn">倒计时永不停止——犹豫，也在流逝。</span>
       </p>
       <button id="startBtn" class="btn btn-gold">坐上赌桌</button>
-      <p class="tip">本游戏旨在警示：远离赌博。</p>
+      <button id="mjEntryBtn" class="btn btn-ghost intro-mj">🀄 川麻 · 四人血战（独立模式）</button>
+      <p class="tip">本游戏旨在警示：远离赌博。川麻为独立娱乐模式，不消耗生命。</p>
     </div>
   </section>
 
@@ -102,6 +104,13 @@
     <div id="endingBox" class="ending-box"></div>
   </section>
 
+  <!-- 川麻 · 四人血战（独立模式） -->
+  <section id="mahjong" class="screen">
+    <div class="mj-app" id="mjApp">
+      <!-- 由 mahjong.js 动态渲染 -->
+    </div>
+  </section>
+
   <!-- 浮动提示（赢/输/差一点） -->
   <div id="toast" class="toast"></div>
 
@@ -111,5 +120,6 @@
   <script src="sound.js"></script>
   <script src="games.js"></script>
   <script src="engine.js"></script>
+  <script src="mahjong.js"></script>
 </body>
 </html>

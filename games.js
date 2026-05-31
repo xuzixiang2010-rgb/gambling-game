@@ -688,5 +688,5 @@ const MahjongGame = {
 /* ---------- 导出所有游戏 ---------- */
 window.GAMES = [
   DiceGame, HighCardGame, BaccaratGame, BlackjackGame,
-  GoldenFlowerGame, StudGame, MahjongGame, SlotGame, RevolverGame,
+  GoldenFlowerGame, StudGame, SlotGame, RevolverGame,
 ];
