@@ -26,6 +26,10 @@ const GOD_LIFE = 99999; // GM 模式下的"无限"生命值
 /* ---------- DOM ---------- */
 const $ = (id) => document.getElementById(id);
 const els = {};
+const T = (key, vars) => (window.I18N ? I18N.t(key, vars) : key);
+const GN = (g) => (window.I18N ? I18N.game(g.id, "name", g.name) : g.name);
+const GS = (g) => (window.I18N ? I18N.game(g.id, "short", g.short) : g.short);
+const GR = (g) => (window.I18N ? I18N.game(g.id, "rules", g.rules) : g.rules);
 
 /* ---------- 隐藏赔率：越往后越难赢，界面永远显示50/50 ---------- */
 function hiddenWinRate() {
@@ -88,7 +92,10 @@ function dealerSay(text) {
   els.dealerFace.style.transform = "scale(1.15)";
   setTimeout(() => (els.dealerFace.style.transform = "scale(1)"), 200);
 }
-function dealerIdle() { dealerSay(pick(DEALER[dealerPhase()].idle)); }
+function dealerIdle() {
+  const lines = window.I18N ? I18N.dealerLines(dealerPhase()) : DEALER[dealerPhase()].idle;
+  dealerSay(pick(lines));
+}
 
 /* ---------- 渲染 ---------- */
 function fmt(s) { return (Math.max(0, s)).toFixed(1) + "s"; }
@@ -96,14 +103,14 @@ function fmt(s) { return (Math.max(0, s)).toFixed(1) + "s"; }
 function renderLife() {
   if (State.godMode) State.life = GOD_LIFE; // 无限生命：每次刷新都钉死
   const over = State.life > 180;
-  const txt = State.godMode ? "∞  (GM 无限)" : fmt(State.life) + (over ? "  ▲ 突破上限!" : "");
+  const txt = State.godMode ? T("infiniteLife") : fmt(State.life) + (over ? T("overflow") : "");
   els.lifeText.textContent = txt;
   const pct = Math.max(0, Math.min(100, (State.life / 180) * 100));
   els.lifeFill.style.width = pct + "%";
   els.lifeFill.classList.toggle("overflow", over);
   // 大厅里的生命条同步刷新(挑选时也在流逝)
   if (els.lobbyLifeText) {
-    els.lobbyLifeText.textContent = State.godMode ? "∞ GM" : fmt(State.life) + (over ? "  ▲" : "");
+    els.lobbyLifeText.textContent = State.godMode ? T("infiniteLifeShort") : fmt(State.life) + (over ? "  ▲" : "");
     els.lobbyLifeFill.style.width = pct + "%";
     els.lobbyLifeFill.classList.toggle("overflow", over);
   }
@@ -129,10 +136,10 @@ function renderHud() {
 
 function renderSunkCost() {
   if (State.life >= 180) {
-    els.sunkCost.innerHTML = `已玩 <b>${State.gamesPlayed}</b> 局 ｜ 你正盈利，何不再赢一把？`;
+    els.sunkCost.innerHTML = T("sunkProfit", { games: State.gamesPlayed });
   } else {
     const need = Math.ceil((180 - State.life) / 40); // 每赢一把净赚20，回到180
-    els.sunkCost.innerHTML = `已玩 <b>${State.gamesPlayed}</b> 局 ｜ 距离回本(180s)只差 <b>再赢 ${need} 把</b>`;
+    els.sunkCost.innerHTML = T("sunkBehind", { games: State.gamesPlayed, need });
   }
 }
 
@@ -145,14 +152,14 @@ function renderLobby() {
     const card = document.createElement(unlocked ? "button" : "div");
     card.className = "lobby-card" + (unlocked ? "" : " locked");
     card.innerHTML = `
-      <img class="thumb" src="${g.img}" alt="${g.name}" />
-      ${g.risk ? '<span class="risk-badge">⚠ 高风险</span>' : ""}
+      <img class="thumb" src="${g.img}" alt="${GN(g)}" />
+      ${g.risk ? `<span class="risk-badge">${T("risk")}</span>` : ""}
       <div class="card-body">
-        <div class="gname">${g.name}</div>
-        <div class="gshort">${g.short}</div>
-        <div class="gunlock">${unlocked ? "▶ 点击进入" : "第 " + g.unlockAtRound + " 局解锁"}</div>
+        <div class="gname">${GN(g)}</div>
+        <div class="gshort">${GS(g)}</div>
+        <div class="gunlock">${unlocked ? T("enter") : T("unlockAt", { round: g.unlockAtRound })}</div>
       </div>
-      ${unlocked ? "" : `<div class="lock-overlay"><span class="lock-ico">🔒</span><span>第 ${g.unlockAtRound} 局解锁</span></div>`}`;
+      ${unlocked ? "" : `<div class="lock-overlay"><span class="lock-ico">🔒</span><span>${T("unlockAt", { round: g.unlockAtRound })}</span></div>`}`;
     if (unlocked) card.onclick = () => enterGame(g);
     els.lobbyGrid.appendChild(card);
   });
@@ -162,13 +169,13 @@ function renderLobby() {
 function renderCurrentGame() {
   if (els.currentGameName && State.currentGame) {
     els.currentGameName.textContent =
-      "正在玩：" + State.currentGame.name + (State.currentGame.risk ? " ⚠" : "");
+      T("playing", { name: GN(State.currentGame), risk: State.currentGame.risk ? " ⚠" : "" });
   }
 }
 
 /* 进入大厅(挑选赌局)；倒计时继续流逝 */
 function enterLobby() {
-  if (State.resolving) { dealerSay("这把还没开完，别急着换桌！"); return; }
+  if (State.resolving) { dealerSay(T("roundUnfinished")); return; }
   if ($("ending").classList.contains("active")) return;
   switchScreen("lobby");
   State.paused = false;
@@ -195,14 +202,14 @@ function renderBets() {
   const opts = [{ v: 10, lbl: "10s" }, { v: 20, lbl: "20s" }];
   if (State.round >= 8) opts.push({ v: 40, lbl: "40s" });
   if (State.round >= 16) opts.push({ v: 80, lbl: "80s" });
-  opts.push({ v: "allin", lbl: "全押" });
+  opts.push({ v: "allin", lbl: T("allInPlain") });
   els.betButtons.innerHTML = "";
   opts.forEach((o) => {
     const b = document.createElement("button");
     const isAllin = o.v === "allin";
     const active = isAllin ? State.allinMode : (!State.allinMode && State.bet === o.v);
     b.className = "bet-chip" + (isAllin ? " allin" : "") + (active ? " active" : "");
-    b.textContent = isAllin ? `全押 ${Math.floor(State.life)}s` : o.lbl;
+    b.textContent = isAllin ? T("allIn", { life: Math.floor(State.life) }) : o.lbl;
     b.onclick = () => {
       if (isAllin) { State.allinMode = true; }
       else { State.allinMode = false; State.bet = o.v; }
@@ -213,7 +220,7 @@ function renderBets() {
   // 自定义下注秒数(始终可用)
   const custom = document.createElement("input");
   custom.type = "number"; custom.min = "1"; custom.className = "bet-custom";
-  custom.placeholder = "自定义秒数";
+  custom.placeholder = T("customBet");
   custom.value = State.allinMode ? "" : String(State.bet);
   custom.oninput = () => {
     let v = Math.floor(Number(custom.value));
@@ -232,9 +239,9 @@ function renderBets() {
 // 动态刷新：全押额度与开赌按钮上的秒数(随倒计时实时变化)
 function updateBetDisplay() {
   const allinChip = els.betButtons && els.betButtons.querySelector(".bet-chip.allin");
-  if (allinChip) allinChip.textContent = `全押 ${Math.floor(State.life)}s`;
+  if (allinChip) allinChip.textContent = T("allIn", { life: Math.floor(State.life) });
   if (els.playBtn) {
-    els.playBtn.textContent = State.resolving ? "开赌中…" : `下注 ${effectiveBet()}s 开赌`;
+    els.playBtn.textContent = State.resolving ? T("opening") : T("betPlay", { bet: effectiveBet() });
   }
 }
 
@@ -258,8 +265,9 @@ function selectGame(g) {
   g.setup(els.stage, ctx);
   // 规则说明显示在场景下方的面板里
   if (els.rules) {
-    els.rules.innerHTML = g.rules
-      ? `📖 <b>${g.name} · 玩法规则</b><br/>${g.rules}`
+    const rules = GR(g);
+    els.rules.innerHTML = rules
+      ? T("rulesTitle", { name: GN(g), rules })
       : "";
   }
   renderCurrentGame();
@@ -270,7 +278,7 @@ function selectGame(g) {
 async function play() {
   if (State.resolving || !State.ready) return;
   const bet = effectiveBet();
-  if (bet < 1 || State.life < bet) { dealerSay("生命不够下注了……要不试试轮盘？"); return; }
+  if (bet < 1 || State.life < bet) { dealerSay(T("notEnoughLife")); return; }
   State.resolving = true;
   State.paused = true; // 演出时暂停倒计时
   updatePlayBtn();
@@ -304,20 +312,20 @@ async function play() {
     State.life += gain;
     State.wins++; State.secWon += (gain - bet);
     State.lossStreak = 0; State.rescued = false;
-    showToast("赢", `+${gain - bet}s`, "win");
-    dealerSay(pick(State.life > 320 ? REACT.bigwin : REACT.win));
+    showToast(T("win"), `+${gain - bet}s`, "win");
+    dealerSay(pick(window.I18N ? I18N.reactLines(State.life > 320 ? "bigwin" : "win") : (State.life > 320 ? REACT.bigwin : REACT.win)));
     SoundFX.win();
   } else if (outcome === "draw") {
     State.life += bet;         // 退还
     State.draws++;
-    showToast("平局", "退还 " + bet + "s", "draw");
-    dealerSay(pick(REACT.draw));
+    showToast(T("draw"), T("returned", { bet }), "draw");
+    dealerSay(pick(window.I18N ? I18N.reactLines("draw") : REACT.draw));
     SoundFX.draw();
   } else {
     State.losses++; State.secLost += bet;
     State.lossStreak++;
-    if (nearMiss) { showToast("就差一点！", "失去 " + bet + "s", "near"); dealerSay(pick(REACT.near)); SoundFX.near(); }
-    else { showToast("输", "失去 " + bet + "s", "lose"); dealerSay(pick(REACT.lose)); SoundFX.lose(); }
+    if (nearMiss) { showToast(T("near"), T("lost", { bet }), "near"); dealerSay(pick(window.I18N ? I18N.reactLines("near") : REACT.near)); SoundFX.near(); }
+    else { showToast(T("lose"), T("lost", { bet }), "lose"); dealerSay(pick(window.I18N ? I18N.reactLines("lose") : REACT.lose)); SoundFX.lose(); }
   }
 
   renderLife(); renderHud(); renderSunkCost();
@@ -376,7 +384,7 @@ function death(reason) {
   switchScreen("ending");
   els.endingBox.className = "ending-box death";
   els.endingBox.innerHTML = `
-    <h2>💀 你输光了</h2>
+    <h2>${window.I18N && I18N.lang() === "en" ? "💀 You Lost Everything" : "💀 你输光了"}</h2>
     <p class="ending-msg">${reason}</p>
     <div class="ending-stats">
       <div class="row"><span>你以为的胜率</span><b>感觉总有一半吧？</b></div>
@@ -400,7 +408,7 @@ function death(reason) {
 
 /* ---------- 结局：主动离开 = 真正的胜利 ---------- */
 function leave() {
-  if (State.resolving) { dealerSay("等等！这把还没完呢！"); return; }
+  if (State.resolving) { dealerSay(T("leaveBlocked")); return; }
   if ($("ending").classList.contains("active")) return;
   State.paused = true;
   document.body.classList.remove("dying");
@@ -409,7 +417,7 @@ function leave() {
   switchScreen("ending");
   els.endingBox.className = "ending-box win";
   els.endingBox.innerHTML = `
-    <h2>🏆 你赢了</h2>
+    <h2>${window.I18N && I18N.lang() === "en" ? "🏆 You Won" : "🏆 你赢了"}</h2>
     <p class="ending-msg">
       你带着 <b style="color:#e8c14a">${fmt(saved)}</b> 的生命，
       在庄家的劝阻声中站了起来，转身离开。
@@ -472,8 +480,22 @@ window.addEventListener("DOMContentLoaded", () => {
     renderLife();
     if ($("lobby").classList.contains("active")) renderLobby();
     if ($("game").classList.contains("active")) { renderBets(); updatePlayBtn(); }
-    dealerSay(State.godMode ? "GM 模式：全部解锁，生命无限。随便玩。" : "GM 模式已关闭，回到凡人规则。");
+    dealerSay(State.godMode ? T("gmOn") : T("gmOff"));
   };
+
+  if (window.I18N) {
+    I18N.onChange(() => {
+      I18N.apply();
+      renderLife(); renderHud(); renderSunkCost();
+      if ($("lobby").classList.contains("active")) renderLobby();
+      if ($("game").classList.contains("active") && State.currentGame && !State.resolving) {
+        renderBets();
+        selectGame(State.currentGame);
+      } else {
+        updateBetDisplay();
+      }
+    });
+  }
 
   setInterval(tick, 100);
 

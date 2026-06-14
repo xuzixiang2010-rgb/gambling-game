@@ -11,17 +11,17 @@
   <!-- 开场界面 -->
   <section id="intro" class="screen active">
     <div class="intro-box">
-      <h1 class="title">180<span class="unit">秒</span></h1>
-      <p class="subtitle">生命赌局</p>
-      <p class="intro-text">
+      <h1 class="title">180<span class="unit" data-i18n="titleUnit">秒</span></h1>
+      <p class="subtitle" data-i18n="subtitle">生命赌局</p>
+      <p class="intro-text" data-i18n-html="introText">
         你只剩 <b>180 秒</b> 生命。<br />
         时间，就是你唯一的筹码。<br />
         和庄家赌一把，<b>赢则双倍，输则永逝</b>。<br />
         <span class="warn">倒计时永不停止——犹豫，也在流逝。</span>
       </p>
-      <button id="startBtn" class="btn btn-gold">坐上赌桌</button>
-      <button id="mjEntryBtn" class="btn btn-ghost intro-mj">🀄 川麻 · 四人血战（独立模式）</button>
-      <p class="tip">本游戏旨在警示：远离赌博。川麻为独立娱乐模式，不消耗生命。</p>
+      <button id="startBtn" class="btn btn-gold" data-i18n="startBtn">坐上赌桌</button>
+      <button id="mjEntryBtn" class="btn btn-ghost intro-mj" data-i18n="mjEntryBtn">🀄 川麻 · 四人血战（独立模式）</button>
+      <p class="tip" data-i18n="introTip">本游戏旨在警示：远离赌博。川麻为独立娱乐模式，不消耗生命。</p>
     </div>
   </section>
 
@@ -31,17 +31,17 @@
       <header class="lobby-head">
         <div class="lobby-life">
           <div class="life-label">
-            <span>剩余生命</span>
+            <span data-i18n="lobbyLife">剩余生命</span>
             <span id="lobbyLifeText">180.0s</span>
           </div>
           <div class="life-bar"><div id="lobbyLifeFill" class="life-fill"></div></div>
         </div>
-        <h2 class="lobby-title">选择今晚的赌局</h2>
-        <p class="lobby-sub">越往后解锁的赌局越刺激，也越凶险。<span class="warn">挑选时，生命仍在流逝。</span></p>
+        <h2 class="lobby-title" data-i18n="lobbyTitle">选择今晚的赌局</h2>
+        <p class="lobby-sub" data-i18n-html="lobbySub">越往后解锁的赌局越刺激，也越凶险。<span class="warn">挑选时，生命仍在流逝。</span></p>
       </header>
       <div id="lobbyGrid" class="lobby-grid"></div>
       <footer class="lobby-foot">
-        <button id="lobbyLeaveBtn" class="btn btn-ghost">带着生命离开（这才是赢）</button>
+        <button id="lobbyLeaveBtn" class="btn btn-ghost" data-i18n="lobbyLeaveBtn">带着生命离开（这才是赢）</button>
       </footer>
     </div>
   </section>
@@ -54,7 +54,7 @@
       <header class="hud">
         <div class="life-wrap">
           <div class="life-label">
-            <span>生命</span>
+            <span data-i18n="lifeLabel">生命</span>
             <span id="lifeText">180.0s</span>
           </div>
           <div class="life-bar">
@@ -62,14 +62,14 @@
           </div>
         </div>
         <div class="hud-stats">
-          <div class="stat"><span class="stat-num" id="roundNum">0</span><span class="stat-lbl">局数</span></div>
-          <div class="stat"><span class="stat-num" id="oddsText">50/50</span><span class="stat-lbl">公平赔率</span></div>
+          <div class="stat"><span class="stat-num" id="roundNum">0</span><span class="stat-lbl" data-i18n="roundLbl">局数</span></div>
+          <div class="stat"><span class="stat-num" id="oddsText">50/50</span><span class="stat-lbl" data-i18n="oddsLbl">公平赔率</span></div>
         </div>
-        <button id="muteBtn" class="mute-btn" title="静音/取消静音">🔊</button>
+        <button id="muteBtn" class="mute-btn" title="静音/取消静音" data-i18n-title="muteTitle">🔊</button>
       </header>
 
       <!-- 荷官台词气泡(叠在荷官身上) -->
-      <div id="dealerSpeech" class="dealer-speech">坐吧，朋友。今晚你手气一定很好。</div>
+      <div id="dealerSpeech" class="dealer-speech" data-i18n="dealerSpeech">坐吧，朋友。今晚你手气一定很好。</div>
       <span id="dealerFace" class="dealer-face-hidden"></span>
 
       <!-- 牌桌上的演出区：骰子/扑克在此呈现 -->
@@ -79,7 +79,7 @@
     <!-- 控制面板(场景图下方) -->
     <div class="panel">
       <div class="game-picker">
-        <button id="lobbyBtn" class="btn btn-ghost lobby-btn">🏛 返回大厅 · 换游戏</button>
+        <button id="lobbyBtn" class="btn btn-ghost lobby-btn" data-i18n="lobbyBtn">🏛 返回大厅 · 换游戏</button>
         <span id="currentGameName" class="current-game"></span>
       </div>
 
@@ -87,12 +87,12 @@
 
       <footer class="controls">
         <div class="bet-row">
-          <span class="bet-label">下注：</span>
+          <span class="bet-label" data-i18n="betLabel">下注：</span>
           <div id="betButtons" class="bet-buttons"></div>
         </div>
         <div class="action-row">
-          <button id="playBtn" class="btn btn-red">下注开赌</button>
-          <button id="leaveBtn" class="btn btn-ghost">离开</button>
+          <button id="playBtn" class="btn btn-red" data-i18n="playBtn">下注开赌</button>
+          <button id="leaveBtn" class="btn btn-ghost" data-i18n="leaveBtn">离开</button>
         </div>
         <div id="sunkCost" class="sunk-cost"></div>
       </footer>
@@ -115,8 +115,10 @@
   <div id="toast" class="toast"></div>
 
   <!-- GM 模式：一键解锁全部游戏 + 无限生命 -->
-  <button id="gmBtn" class="gm-fab" title="GM 模式：解锁全部游戏 + 无限生命">GM</button>
+  <button id="langToggle" class="lang-fab" title="Switch language">EN</button>
+  <button id="gmBtn" class="gm-fab" title="GM 模式：解锁全部游戏 + 无限生命" data-i18n-title="gmTitle">GM</button>
 
+  <script src="i18n.js"></script>
   <script src="sound.js"></script>
   <script src="games.js"></script>
   <script src="engine.js"></script>

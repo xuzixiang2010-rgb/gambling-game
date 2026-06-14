@@ -495,7 +495,8 @@ body {
 @keyframes mjPop { 0%{transform:scale(0.4) translateY(-16px);opacity:0;} 60%{transform:scale(1.18);} 100%{transform:scale(1);opacity:1;} }
 
 /* GM 悬浮按钮：一键解锁 + 无限生命 */
-.gm-fab {
+.gm-fab,
+.lang-fab {
   position: fixed; left: 12px; bottom: 12px; z-index: 40;
   padding: 8px 14px; border-radius: 20px; cursor: pointer;
   background: rgba(20,24,20,0.7); color: var(--gold-soft);
@@ -503,8 +504,11 @@ body {
   font-size: 13px; backdrop-filter: blur(4px);
   transition: transform 0.1s, border-color 0.15s, background 0.15s, color 0.15s;
 }
-.gm-fab:hover { border-color: var(--gold); }
-.gm-fab:active { transform: scale(0.92); }
+.lang-fab { left: auto; right: 12px; min-width: 52px; }
+.gm-fab:hover,
+.lang-fab:hover { border-color: var(--gold); }
+.gm-fab:active,
+.lang-fab:active { transform: scale(0.92); }
 .gm-fab.active {
   background: linear-gradient(160deg, #e8c14a, #c79a23);
   color: #2a1d05; border-color: #fff3c4;

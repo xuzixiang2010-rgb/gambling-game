@@ -20,6 +20,12 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const $ = (id) => document.getElementById(id);
   const beep = (fn) => { try { if (window.SoundFX && SoundFX[fn]) SoundFX[fn](); } catch (e) {} };
+  const MJ = (key, vars) => (window.I18N ? I18N.mj(key, vars) : key);
+  const suitName = (i) => (window.I18N ? I18N.mjSuit(i) : SUIT_CH[i]);
+  const rankName = (i) => (window.I18N ? I18N.mjRank(i) : CN[i]);
+  const seatName = (i) => (window.I18N ? I18N.mjSeat(i) : SEAT_NAME[i]);
+  const fanName = (name) => (window.I18N ? I18N.mjFan(name) : name);
+  const byName = (type) => (window.I18N ? I18N.mjBy(type) : ({ selfDraw: "自摸", robKong: "抢杠", discard: "点炮" }[type]));
 
   let G = null;
 
@@ -143,11 +149,11 @@
 
     // 顶部栏
     let html = `<div class="mj-bar">
-      <span class="mj-logo">🀄 川麻 · 血战到底</span>
-      <span>剩 <b style="color:#e8c14a">${G.wall.length}</b> 张</span>
+      <span class="mj-logo">${MJ("logo")}</span>
+      <span>${MJ("wallLeft", { n: G.wall.length })}</span>
       <span class="spacer"></span>
-      <button id="mjRestart">重开一局</button>
-      <button id="mjExit">返回</button>
+      <button id="mjRestart">${MJ("restart")}</button>
+      <button id="mjExit">${MJ("back")}</button>
     </div>`;
 
     html += `<div class="mj-table">`;
@@ -164,7 +170,7 @@
       let melds = ""; for (const m of p.melds) melds += meldHTML(m, "sm");
       html += `<div class="seat ${cls}${G.turn === seat && !G.over ? " turn" : ""}${p.finished ? " win" : ""}">
         <span class="arm">✋</span>
-        <span class="name">${SEAT_NAME[seat]}${seat === G.dealer ? "(庄)" : ""} <span class="q">${p.que != null ? "缺" + SUIT_CH[p.que] : ""}</span> <span class="sc">${p.score}</span>${p.finished ? " ✓胡" : ""}</span>
+        <span class="name">${seatName(seat)}${seat === G.dealer ? MJ("dealer") : ""} <span class="q">${p.que != null ? MJ("quePrefix") + suitName(p.que) : ""}</span> <span class="sc">${p.score}</span>${p.finished ? MJ("winMark") : ""}</span>
         <div class="${meldWrap}">${melds}</div>
         <div class="${handWrap}">${backs}</div>
       </div>`;
@@ -183,7 +189,7 @@
     html += `<div class="mj-center">
       <div class="disc disc-top">${discZone(2)}</div>
       <div class="disc disc-left">${discZone(3)}</div>
-      <div class="mj-pool"><span class="num">${G.wall.length}</span><span class="lbl">剩余牌</span></div>
+      <div class="mj-pool"><span class="num">${G.wall.length}</span><span class="lbl">${MJ("pool")}</span></div>
       <div class="disc disc-right">${discZone(1)}</div>
       <div class="disc disc-bottom">${discZone(0)}</div>
     </div>`;
@@ -200,7 +206,7 @@
     });
     html += `<div class="seat seat-bottom${G.turn === 0 && !G.over ? " turn" : ""}${me.finished ? " win" : ""}">
       <span class="arm">✋</span>
-      <span class="name">${SEAT_NAME[0]}${G.dealer === 0 ? "(庄)" : ""} <span class="q">${me.que != null ? "缺" + SUIT_CH[me.que] : ""}</span> <span class="sc">${me.score}</span>${me.finished ? " ✓胡" : ""}</span>
+      <span class="name">${seatName(0)}${G.dealer === 0 ? MJ("dealer") : ""} <span class="q">${me.que != null ? MJ("quePrefix") + suitName(me.que) : ""}</span> <span class="sc">${me.score}</span>${me.finished ? MJ("winMark") : ""}</span>
       <div class="meld-row">${myMelds}</div>
       <div class="hand-row hand0">${myTiles}</div>
     </div>`;
@@ -267,14 +273,14 @@
     for (const p of G.players) if (p.isAI) p.que = aiChooseQue(p);
     // 玩家定缺弹层
     const cnt = [0, 0, 0]; for (const t of G.players[0].hand) cnt[suitOf(t)]++;
-    G.status = "请定缺：选择一门花色，本局必须先打光它，且胡牌时手上不能有这门牌。";
+    G.status = MJ("chooseQueStatus");
     render();
     showQueModal(cnt);
     const que = await ask();
     G.players[0].que = que;
     closeModal();
     G.players.forEach(updateQueDone);
-    G.status = `你定缺「${SUIT_CH[que]}」。请先打光缺门牌。`;
+    G.status = MJ("queSet", { suit: suitName(que) });
     render();
     await sleep(500);
   }
@@ -282,12 +288,12 @@
     const app = $("mjApp");
     const m = document.createElement("div");
     m.className = "mj-modal"; m.id = "mjModal";
-    m.innerHTML = `<div class="box"><h3>定缺</h3>
-      <p>川麻必须「缺一门」。选定后要先把这门花色打光，且这门牌不能用来胡牌。<br/>建议选你张数最少的一门。</p>
+    m.innerHTML = `<div class="box"><h3>${MJ("queTitle")}</h3>
+      <p>${MJ("queHelp")}</p>
       <div class="mj-que-opts">
-        <button class="q" data-s="0">万<small>${cnt[0]} 张</small></button>
-        <button class="q" data-s="1">筒<small>${cnt[1]} 张</small></button>
-        <button class="q" data-s="2">条<small>${cnt[2]} 张</small></button>
+        <button class="q" data-s="0">${suitName(0)}<small>${MJ("countTiles", { n: cnt[0] })}</small></button>
+        <button class="q" data-s="1">${suitName(1)}<small>${MJ("countTiles", { n: cnt[1] })}</small></button>
+        <button class="q" data-s="2">${suitName(2)}<small>${MJ("countTiles", { n: cnt[2] })}</small></button>
       </div></div>`;
     app.appendChild(m);
     m.querySelectorAll(".q").forEach((b) => (b.onclick = () => answer(+b.dataset.s)));
@@ -379,10 +385,10 @@
         const legal = legalDiscards(p);
         G.askData = { legal };
         G.buttons = [];
-        if (opts.win) G.buttons.push({ label: "🀅 自摸胡", cls: "hu", onClick: () => answer({ type: "win" }) });
-        for (const t of opts.angang) G.buttons.push({ label: `暗杠 ${tileText(t)}`, cls: "gang", onClick: () => answer({ type: "angang", tile: t }) });
-        for (const t of opts.bugang) G.buttons.push({ label: `补杠 ${tileText(t)}`, cls: "gang", onClick: () => answer({ type: "bugang", tile: t }) });
-        G.status = p.queDone ? "轮到你：点亮的牌可打出（或点上方按钮）。" : `先打缺门「${SUIT_CH[p.que]}」：只能打出缺门牌。`;
+        if (opts.win) G.buttons.push({ label: MJ("selfHu"), cls: "hu", onClick: () => answer({ type: "win" }) });
+        for (const t of opts.angang) G.buttons.push({ label: MJ("anGang", { tile: tileText(t) }), cls: "gang", onClick: () => answer({ type: "angang", tile: t }) });
+        for (const t of opts.bugang) G.buttons.push({ label: MJ("buGang", { tile: tileText(t) }), cls: "gang", onClick: () => answer({ type: "bugang", tile: t }) });
+        G.status = p.queDone ? MJ("yourTurn") : MJ("discardVoid", { suit: suitName(p.que) });
         G.onTileClick = (t) => { if (legal.has(t)) answer({ type: "discard", tile: t }); };
         render();
         const r = await ask();
@@ -404,7 +410,7 @@
       }
     }
   }
-  function tileText(t) { return CN[rankOf(t)] + SUIT_CH[suitOf(t)]; }
+  function tileText(t) { return rankName(rankOf(t)) + suitName(suitOf(t)); }
   function legalDiscards(p) {
     updateQueDone(p);
     if (!p.queDone) return new Set(p.hand.filter((t) => suitOf(t) === p.que));
@@ -420,10 +426,10 @@
       if (p.isAI) winners.push(p.seat);
       else {
         G.buttons = [
-          { label: "🀅 抢杠胡", cls: "hu", onClick: () => answer(true) },
-          { label: "过", cls: "ghost", onClick: () => answer(false) },
+          { label: MJ("robKong"), cls: "hu", onClick: () => answer(true) },
+          { label: MJ("pass"), cls: "ghost", onClick: () => answer(false) },
         ];
-        G.status = `${SEAT_NAME[gangerSeat]} 补杠 ${tileText(tile)}，可抢杠胡！`;
+        G.status = MJ("canRob", { seat: seatName(gangerSeat), tile: tileText(tile) });
         render();
         const yes = await ask(); if (yes) winners.push(0);
       }
@@ -446,10 +452,10 @@
         if (p.isAI) winners.push(seat);
         else {
           G.buttons = [
-            { label: "🀅 胡（点炮）", cls: "hu", onClick: () => answer(true) },
-            { label: "过", cls: "ghost", onClick: () => answer(false) },
+            { label: MJ("claimHu"), cls: "hu", onClick: () => answer(true) },
+            { label: MJ("pass"), cls: "ghost", onClick: () => answer(false) },
           ];
-          G.status = `${SEAT_NAME[discarder]} 打出 ${tileText(tile)}，你可以胡！`;
+          G.status = MJ("canHuDiscard", { seat: seatName(discarder), tile: tileText(tile) });
           render();
           const yes = await ask(); if (yes) winners.push(seat);
         }
@@ -472,10 +478,10 @@
         if (canPeng && aiWantPeng(p)) { doPeng(seat, discarder, tile); await afterMeldAnim(seat); return { type: "peng", seat }; }
       } else {
         G.buttons = [];
-        if (canGang) G.buttons.push({ label: "杠", cls: "gang", onClick: () => answer("gang") });
-        if (canPeng) G.buttons.push({ label: "碰", cls: "peng", onClick: () => answer("peng") });
-        G.buttons.push({ label: "过", cls: "ghost", onClick: () => answer("pass") });
-        G.status = `${SEAT_NAME[discarder]} 打出 ${tileText(tile)}。`;
+        if (canGang) G.buttons.push({ label: MJ("gang"), cls: "gang", onClick: () => answer("gang") });
+        if (canPeng) G.buttons.push({ label: MJ("peng"), cls: "peng", onClick: () => answer("peng") });
+        G.buttons.push({ label: MJ("pass"), cls: "ghost", onClick: () => answer("pass") });
+        G.status = MJ("claimDiscard", { seat: seatName(discarder), tile: tileText(tile) });
         render();
         const act = await ask();
         if (act === "gang") { await doMingGang(seat, discarder, tile); return { type: "gang", seat }; }
@@ -521,7 +527,7 @@
       p.hand.push(winTile); // 把点炮/抢杠的牌纳入手牌组成
     }
     const sc = computeScore(p, ctx.selfDraw ? null : null, { selfDraw: !!ctx.selfDraw, gangFlower: !!ctx.gangFlower, robKong: !!ctx.robKong, haiDi: !!ctx.haiDi });
-    const byTxt = ctx.selfDraw ? "自摸" : (ctx.robKong ? "抢杠" : "点炮");
+    const byTxt = ctx.selfDraw ? byName("selfDraw") : (ctx.robKong ? byName("robKong") : byName("discard"));
     p.finished = true; p.win = { ...ctx, ...sc, by: byTxt };
     // 结算
     if (ctx.selfDraw) {
@@ -534,7 +540,7 @@
       p.score += sc.points;
     }
     G.results.push({ seat, names: sc.names, points: ctx.selfDraw ? sc.points + "/家" : sc.points, by: byTxt });
-    G.status = `${SEAT_NAME[seat]} 胡牌！${sc.names.join("·")}（${sc.points}分）`;
+    G.status = MJ("wonStatus", { seat: seatName(seat), names: sc.names.map(fanName).join("·"), points: sc.points });
     beep("win");
     render();
     await sleep(1100);
@@ -559,9 +565,9 @@
       if (mustDraw) {
         // 摸牌（玩家需点「摸牌」）
         if (!p.isAI && !replacement) {
-          G.buttons = [{ label: "🀫 摸牌", cls: "", onClick: () => answer(true) }];
+          G.buttons = [{ label: MJ("drawBtn"), cls: "", onClick: () => answer(true) }];
           G.askData = null; G.onTileClick = null;
-          G.status = "轮到你，点「摸牌」。";
+          G.status = MJ("drawPrompt");
           render();
           await ask();
           if (!G.running) return;
@@ -591,7 +597,7 @@
         else {
           const legal = legalDiscards(p);
           G.askData = { legal }; G.buttons = null;
-          G.status = p.queDone ? "碰牌后请出一张。" : `先打缺门「${SUIT_CH[p.que]}」。`;
+          G.status = p.queDone ? MJ("afterPeng") : MJ("discardVoid", { suit: suitName(p.que) });
           G.onTileClick = (t) => { if (legal.has(t)) answer(t); };
           render();
           tile = await ask();
@@ -636,7 +642,7 @@
   function endGame() {
     G.over = true; G.turn = -1;
     render();
-    const reason = G.wall.length === 0 && aliveCount() > 1 ? "牌已摸完 · 流局" : "血战结束";
+    const reason = G.wall.length === 0 && aliveCount() > 1 ? MJ("drawEnd") : MJ("battleEnd");
     showResultModal(reason);
   }
   function showResultModal(reason) {
@@ -647,16 +653,16 @@
     const order = G.players.slice().sort((a, b) => b.score - a.score);
     for (const p of order) {
       const w = p.win;
-      const types = w ? `${w.by}·${w.names.join("·")}` : (p.finished ? "已胡" : "未胡");
-      rows += `<div class="r"><span class="nm">${SEAT_NAME[p.seat]}${p.seat === G.dealer ? "(庄)" : ""}</span>
+      const types = w ? `${w.by}·${w.names.map(fanName).join("·")}` : (p.finished ? MJ("alreadyWon") : MJ("notWon"));
+      rows += `<div class="r"><span class="nm">${seatName(p.seat)}${p.seat === G.dealer ? MJ("dealer") : ""}</span>
         <span class="types">${types}</span>
         <span class="pt ${p.score >= 0 ? "plus" : "minus"}">${p.score >= 0 ? "+" : ""}${p.score}</span></div>`;
     }
     m.innerHTML = `<div class="box"><h3>🀄 ${reason}</h3>
       <div class="mj-result-list">${rows}</div>
       <div class="mj-buttons">
-        <button class="mj-btn" id="mjAgain">再来一局</button>
-        <button class="mj-btn ghost" id="mjBack">返回首页</button>
+        <button class="mj-btn" id="mjAgain">${MJ("again")}</button>
+        <button class="mj-btn ghost" id="mjBack">${MJ("home")}</button>
       </div></div>`;
     app.appendChild(m);
     $("mjAgain").onclick = () => startMahjong();
@@ -692,7 +698,7 @@
   async function runGame() {
     await quePhase();
     if (!G.running) return;
-    G.status = `${SEAT_NAME[G.dealer]} 是庄家，先出牌。`;
+    G.status = MJ("dealerFirst", { seat: seatName(G.dealer) });
     await playLoop();
   }
   function exitMahjong() {
@@ -713,6 +719,11 @@
   document.addEventListener("DOMContentLoaded", () => {
     const btn = $("mjEntryBtn");
     if (btn) btn.onclick = enter;
+    if (window.I18N) {
+      I18N.onChange(() => {
+        if (G && $("mahjong") && $("mahjong").classList.contains("active")) render();
+      });
+    }
   });
   window.startMahjong = startMahjong;
 })();

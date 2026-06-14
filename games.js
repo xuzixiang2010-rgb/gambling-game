@@ -14,6 +14,9 @@
 const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const GT = (id, key, fallback, vars) => (window.I18N ? I18N.game(id, key, fallback, vars) : (fallback || ""));
+const CT = (key, fallback, vars) => (window.I18N ? I18N.game("compare", key, fallback, vars) : (fallback || ""));
+const HAND_NAME = (name) => (window.I18N ? I18N.gameHand(name) : name);
 
 const SUITS = [
   { s: "♠", red: false }, { s: "♥", red: true },
@@ -162,7 +165,7 @@ const DiceGame = {
   _choice: null,
   setup(stage, ctx) {
     this._choice = null;
-    stage.innerHTML = `<div class="stage-title">🎲 摇骰子 · 猜大小</div>`;
+    stage.innerHTML = `<div class="stage-title">${GT("dice", "title", "🎲 摇骰子 · 猜大小")}</div>`;
     const arena = document.createElement("div");
     arena.className = "dice-arena";
     arena.innerHTML = `<div class="dice-shaker">
@@ -173,10 +176,10 @@ const DiceGame = {
     layoutDiceRow(arena); // 初始三颗骰子(随机面)
     const info = document.createElement("div");
     info.className = "stage-info";
-    info.textContent = "三颗骰子总和：4~10 为「小」，11~17 为「大」，豹子(三同)算平局退还。";
+    info.textContent = GT("dice", "info", "三颗骰子总和：4~10 为「小」，11~17 为「大」，豹子(三同)算平局退还。");
     stage.appendChild(info);
     const cg = choiceGroup([
-      { label: "押 小", value: "small" }, { label: "押 大", value: "big" },
+      { label: GT("dice", "small", "押 小"), value: "small" }, { label: GT("dice", "big", "押 大"), value: "big" },
     ], ctx);
     this._cg = cg;
     stage.appendChild(cg.wrap);
@@ -260,16 +263,16 @@ const HighCardGame = {
   img: "assets/game_highcard.png",
   rules: "你和庄家各翻一张牌，点数大的一方获胜（A 最大，2 最小）。你赢则得双倍时间，输则损失赌注，点数相同为平局退还。",
   setup(stage, ctx) {
-    stage.innerHTML = `<div class="stage-title">🂡 翻牌比大小</div>`;
+    stage.innerHTML = `<div class="stage-title">${GT("highcard", "title", "🂡 翻牌比大小")}</div>`;
     const row = document.createElement("div");
     row.className = "card-row"; row.id = "hcRow";
-    row.innerHTML = `<div style="text-align:center"><div class="card back">?</div><div class="stage-info">你</div></div>
+    row.innerHTML = `<div style="text-align:center"><div class="card back">?</div><div class="stage-info">${GT("highcard", "you", "你")}</div></div>
                      <div style="font-size:24px;align-self:center">VS</div>
-                     <div style="text-align:center"><div class="card back">?</div><div class="stage-info">庄家</div></div>`;
+                     <div style="text-align:center"><div class="card back">?</div><div class="stage-info">${GT("highcard", "dealer", "庄家")}</div></div>`;
     stage.appendChild(row);
     const info = document.createElement("div");
     info.className = "stage-info";
-    info.textContent = "各翻一张牌，点数大者胜（A 最大）。点数相同为平局。";
+    info.textContent = GT("highcard", "info", "各翻一张牌，点数大者胜（A 最大）。点数相同为平局。");
     stage.appendChild(info);
     ctx.setReady(true); // 无需选择
   },
@@ -316,16 +319,16 @@ const BaccaratGame = {
   img: "assets/game_baccarat.png",
   rules: "押注「闲」「庄」或「和」三选一。双方各发两张真实扑克牌，按牌面计点（A=1，2~9为面值，10/J/Q/K=0，相加取个位），比谁更接近 9。押中你选的一方即赢，押「和」赔率最高但极难命中。",
   setup(stage, ctx) {
-    stage.innerHTML = `<div class="stage-title">🎴 百家乐</div>
-      <div class="stage-info">双方各发两张牌，按牌面取点（取个位），点数大者胜。押「和」赔率高但极难中。</div>`;
+    stage.innerHTML = `<div class="stage-title">${GT("baccarat", "title", "🎴 百家乐")}</div>
+      <div class="stage-info">${GT("baccarat", "info", "双方各发两张牌，按牌面取点（取个位），点数大者胜。押「和」赔率高但极难中。")}</div>`;
     const table = document.createElement("div");
     table.className = "bac-table";
     table.innerHTML = `
-      <div class="bac-side"><div class="stage-info">闲 PLAYER</div><div class="card-row" id="bacP"></div></div>
-      <div class="bac-side"><div class="stage-info">庄 BANKER</div><div class="card-row" id="bacB"></div></div>`;
+      <div class="bac-side"><div class="stage-info">${GT("baccarat", "player", "闲 PLAYER")}</div><div class="card-row" id="bacP"></div></div>
+      <div class="bac-side"><div class="stage-info">${GT("baccarat", "banker", "庄 BANKER")}</div><div class="card-row" id="bacB"></div></div>`;
     stage.appendChild(table);
     const cg = choiceGroup([
-      { label: "押 闲", value: "player" }, { label: "押 庄", value: "banker" }, { label: "押 和", value: "tie" },
+      { label: GT("baccarat", "betPlayer", "押 闲"), value: "player" }, { label: GT("baccarat", "betBanker", "押 庄"), value: "banker" }, { label: GT("baccarat", "betTie", "押 和"), value: "tie" },
     ], ctx);
     this._cg = cg;
     stage.appendChild(cg.wrap);
@@ -338,7 +341,7 @@ const BaccaratGame = {
     const res = stage.querySelector("#bacRes");
     const pRow = stage.querySelector("#bacP"), bRow = stage.querySelector("#bacB");
     pRow.innerHTML = ""; bRow.innerHTML = "";
-    res.textContent = "发牌中…";
+    res.textContent = GT("baccarat", "dealing", "发牌中…");
     let p, b;
     const tieBet = choice === "tie";
     if (outcome === "draw" || (tieBet && outcome === "win")) { p = randInt(0, 9); b = p; }
@@ -357,7 +360,7 @@ const BaccaratGame = {
     const seq = [[pRow, pc[0]], [bRow, bc[0]], [pRow, pc[1]], [bRow, bc[1]]];
     for (const [row, c] of seq) { SoundFX.card(); row.appendChild(cardEl(c.rank, c.suit)); await wait(300); }
     await wait(200);
-    res.innerHTML = `闲 <b style="color:#6fa8dc">${p}</b> 点 ｜ 庄 <b style="color:#e74c3c">${b}</b> 点`;
+    res.innerHTML = GT("baccarat", "result", `闲 <b style="color:#6fa8dc">${p}</b> 点 ｜ 庄 <b style="color:#e74c3c">${b}</b> 点`, { p, b });
     return {};
   },
 };
@@ -372,13 +375,13 @@ const BlackjackGame = {
   setup(stage, ctx) {
     this._ctx = ctx; this._done = false;
     this._player = [randomCard(), randomCard()];
-    stage.innerHTML = `<div class="stage-title">🃏 21点 · 尽量接近21且不爆</div>`;
+    stage.innerHTML = `<div class="stage-title">${GT("blackjack", "title", "🃏 21点 · 尽量接近21且不爆")}</div>`;
     this._area = document.createElement("div");
     stage.appendChild(this._area);
     const btns = document.createElement("div");
     btns.className = "choice-row";
-    const hit = document.createElement("button"); hit.className = "choice"; hit.textContent = "要牌";
-    const stand = document.createElement("button"); stand.className = "choice"; stand.textContent = "停牌";
+    const hit = document.createElement("button"); hit.className = "choice"; hit.textContent = GT("blackjack", "hit", "要牌");
+    const stand = document.createElement("button"); stand.className = "choice"; stand.textContent = GT("blackjack", "stand", "停牌");
     hit.onclick = () => this._hit();
     stand.onclick = () => this._stand();
     this._hitBtn = hit; this._standBtn = stand;
@@ -402,7 +405,7 @@ const BlackjackGame = {
   _render() {
     const t = this._total(this._player);
     this._area.innerHTML = `<div class="card-row" id="bjP"></div>
-      <div class="stage-info">你的点数：<b style="color:#e8c14a">${t}</b></div>`;
+      <div class="stage-info">${GT("blackjack", "yourTotal", `你的点数：<b style="color:#e8c14a">${t}</b>`, { t })}</div>`;
     const row = this._area.querySelector("#bjP");
     this._player.forEach((c) => row.appendChild(cardEl(c.rank, c.suit)));
   },
@@ -436,7 +439,7 @@ const BlackjackGame = {
     const dcards = cardsForTotal(dealerTotal);
     const dShow = document.createElement("div");
     dShow.innerHTML = `<div class="card-row" id="bjD"></div>
-      <div class="stage-info">庄家：<b style="color:#e74c3c">${dealerTotal > 21 ? dealerTotal + "（爆牌）" : dealerTotal}</b></div>`;
+      <div class="stage-info">${GT("blackjack", "dealerTotal", `庄家：<b style="color:#e74c3c">${dealerTotal > 21 ? dealerTotal + "（爆牌）" : dealerTotal}</b>`, { t: dealerTotal > 21 ? dealerTotal + GT("blackjack", "busted", "（爆牌）") : dealerTotal })}</div>`;
     this._area.appendChild(dShow);
     const row = dShow.querySelector("#bjD");
     for (const c of dcards) { SoundFX.card(); row.appendChild(cardEl(c.rank, c.suit)); await wait(350); }
@@ -492,8 +495,8 @@ function makeCompareGame(cfg) {
     img: cfg.img,
     rules: cfg.rules,
     setup(stage, ctx) {
-      stage.innerHTML = `<div class="stage-title">${cfg.title}</div>
-        <div class="stage-info">${cfg.info}</div>`;
+      stage.innerHTML = `<div class="stage-title">${GT(cfg.id, "title", cfg.title)}</div>
+        <div class="stage-info">${GT(cfg.id, "info", cfg.info)}</div>`;
       this._area = document.createElement("div");
       stage.appendChild(this._area);
       // 先发玩家自己的牌（看牌），玩家看清牌型后再决定下注多少
@@ -503,14 +506,14 @@ function makeCompareGame(cfg) {
       this._pLvl = randInt(Math.max(0, mid - 1), Math.min(max, mid + 1));
       this._pHand = hands[this._pLvl];
       this._area.innerHTML = `
-        <div class="stage-info">你的牌（先看牌，再下注）</div><div class="card-row" id="cgP"></div>
+        <div class="stage-info">${CT("yourCards", "你的牌（先看牌，再下注）")}</div><div class="card-row" id="cgP"></div>
         <div class="stage-info" id="cgPn">？</div>
-        <div class="stage-info" style="margin-top:14px">庄家</div>
+        <div class="stage-info" style="margin-top:14px">${CT("dealer", "庄家")}</div>
         <div class="card-row" id="cgD">${'<div class="card back">?</div>'.repeat(cfg.count)}</div>
-        <div class="stage-info" id="cgDn">下注后揭晓庄家牌</div>`;
+        <div class="stage-info" id="cgDn">${CT("revealAfterBet", "下注后揭晓庄家牌")}</div>`;
       const pr = this._area.querySelector("#cgP");
       for (const [rank, si] of this._pHand.cards) { SoundFX.card(); pr.appendChild(cardEl(rank, SUITS[si])); }
-      this._area.querySelector("#cgPn").innerHTML = `你的牌型：<b style="color:#e8c14a">${this._pHand.name}</b>`;
+      this._area.querySelector("#cgPn").innerHTML = CT("yourType", `你的牌型：<b style="color:#e8c14a">${this._pHand.name}</b>`, { name: HAND_NAME(this._pHand.name) });
       ctx.setReady(true);
     },
     ready() { return true; },
@@ -526,7 +529,7 @@ function makeCompareGame(cfg) {
       const dr = this._area.querySelector("#cgD");
       dr.innerHTML = "";
       for (const [rank, si] of dHand.cards) { SoundFX.card(); dr.appendChild(cardEl(rank, SUITS[si])); await wait(220); }
-      this._area.querySelector("#cgDn").innerHTML = `庄家牌型：<b style="color:#e74c3c">${dHand.name}</b>`;
+      this._area.querySelector("#cgDn").innerHTML = CT("dealerType", `庄家牌型：<b style="color:#e74c3c">${dHand.name}</b>`, { name: HAND_NAME(dHand.name) });
       await wait(300);
       return {};
     },
@@ -542,13 +545,13 @@ const SlotGame = {
   img: "assets/game_slot.png",
   rules: "拉动三个转轮，停下后三个图案完全相同即中奖，7️⃣7️⃣7️⃣ 为头奖。高赔率高刺激，但中奖远比看上去难——你常常会「只差一个」。",
   setup(stage, ctx) {
-    stage.innerHTML = `<div class="stage-title">🎰 老虎机 · 高风险高回报</div>`;
+    stage.innerHTML = `<div class="stage-title">${GT("slot", "title", "🎰 老虎机 · 高风险高回报")}</div>`;
     const row = document.createElement("div");
     row.className = "slot-row"; row.id = "slotRow";
     row.innerHTML = `<div class="reel">🍒</div><div class="reel">🔔</div><div class="reel">💎</div>`;
     stage.appendChild(row);
     stage.insertAdjacentHTML("beforeend",
-      `<div class="stage-info">三个相同图案即中奖！<b style="color:#e8c14a">7️⃣7️⃣7️⃣</b> 是头奖。</div>`);
+      `<div class="stage-info">${GT("slot", "info", '三个相同图案即中奖！<b style="color:#e8c14a">7️⃣7️⃣7️⃣</b> 是头奖。')}</div>`);
     ctx.setReady(true);
   },
   ready() { return true; },
@@ -581,12 +584,9 @@ const RevolverGame = {
   img: "assets/game_revolver.png",
   rules: "六个弹膛，只装一颗子弹。扣下扳机：中弹则生命瞬间归零(直接死亡)，幸存则赌注 ×4 巨额回血。这是庄家给绝望者的「恩赐」——但子弹从不讲情面。",
   setup(stage, ctx) {
-    stage.innerHTML = `<div class="stage-title">💀 俄罗斯轮盘 · 赌上性命</div>
+    stage.innerHTML = `<div class="stage-title">${GT("revolver", "title", "💀 俄罗斯轮盘 · 赌上性命")}</div>
       <div class="revolver" id="gun">🔫</div>
-      <div class="stage-info">六个弹膛，一颗子弹。<br/>
-      <b style="color:#e74c3c">中弹 = 生命瞬间归零（死亡）</b><br/>
-      幸存 = 赌注 <b style="color:#e8c14a">×4</b> 巨额回血。<br/>
-      <span style="color:#ff3b30">这是庄家给绝望者的最后"恩赐"。</span></div>`;
+      <div class="stage-info">${GT("revolver", "info", '六个弹膛，一颗子弹。<br/><b style="color:#e74c3c">中弹 = 生命瞬间归零（死亡）</b><br/>幸存 = 赌注 <b style="color:#e8c14a">×4</b> 巨额回血。<br/><span style="color:#ff3b30">这是庄家给绝望者的最后"恩赐"。</span>')}</div>`;
     ctx.setReady(true);
   },
   ready() { return true; },
